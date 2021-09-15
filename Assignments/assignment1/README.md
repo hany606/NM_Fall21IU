@@ -1,12 +1,11 @@
-# NM: Assignment1
-
-Reviewed: No
+# Assignment1
 
 # Info:
 
 - Hany Hamed
 - BS4-Robotics
 - Fall 2021, Innopolis Univeristy
+- Numerical Modeling course
 
 # Sources:
 
