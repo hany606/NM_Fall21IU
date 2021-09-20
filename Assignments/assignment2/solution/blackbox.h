@@ -1,4 +1,6 @@
 #include <math.h>
+#include <cmath>
+
 
 static int __n_method;
 
@@ -10,6 +12,8 @@ double blackbox(double x) {
     switch (__n_method) {
         case 1:
             return 2*x + 1;
+        case 2:
+            return std::cos(x);
     }
 }
 
