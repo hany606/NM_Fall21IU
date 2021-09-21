@@ -82,7 +82,7 @@ int main() {
 //             return std::sin(x*x*x);
 //         case 13: //0.620536603447
 //             return std::sin(x*x);
-//         case 14:
+//         case 14: //0.181818181818
 //             return std::pow(x,10);
 
 //     }
