@@ -28,7 +28,16 @@ double blackbox(double x) {
             return std::sqrt(x+1);
         case 9: //0.000000000000
             return x*std::tan(x)*std::tan(x);
-
+        case 10: //29.681284231115
+            return std::exp(-x*5);
+        case 11: //1.493648265625
+            return std::exp(-x*x);
+        case 12: //0.0
+            return std::sin(x*x*x);
+        case 13: //0.620536603447
+            return std::sin(x*x);
+        case 14:
+            return std::pow(x,10);
 
     }
 }
@@ -40,7 +49,13 @@ double blackbox_df(int k) {
                 return 2;
             else
                 return 0;
+        case 14: // 2*x + 1
+            if (k==4)
+                return 5040;
+            else
+                return 0;
     }
+
 }
 
 double blackbox_period() {
