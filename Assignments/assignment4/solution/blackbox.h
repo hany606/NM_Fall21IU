@@ -4,6 +4,9 @@
 
 int __time, __method;
 
+// initializes the internal blackbox data structures. Should be called at the very
+// beginning of the program! No other blackbox function should be called before it, and no reading
+// from the stdin shall occur.
 void gps_init() {
     scanf("%d", &__method);
     __time = 0;
@@ -14,6 +17,13 @@ double _ti(double x, double y, double z, double t, double xi, double yi, double 
     return t - sqrt(dist2);
 }
 
+
+// reads data from the receiver.
+// The data is written to the arrays x, y, z, t, and the function returns the number of satellites for
+// which we have the data. The arrays x, y, z, t must be allocated by you, and contain at least 30
+// elements each. For example, if the function returns 5, that means that first five elements of x now
+// contain x coordinates of the five satellites, etc. If gps_read returns any value less than four, it means
+// that we have lost the signal, and the program should quit (return 0;).
 int gps_read(double *x, double *y, double *z, double *t) {
     if (__method == 1) {
         if (__time > 20)
@@ -39,6 +49,9 @@ int gps_read(double *x, double *y, double *z, double *t) {
     return 0;
 }
 
+
+// accepts calculated coordinates
+// of the receiver. Must be called after every successful (return value ≥ 4) call to gps_read.
 void gps_submit(double x, double y, double z, double t) {
     printf("%.12f %.12f %.12f %.12f\n", x, y, z, t);
 }
