@@ -11,3 +11,11 @@ Create a cubic spline interpolation, more details in "[Assignment directory](htt
 ![set2.png](Assignments/assignment1/equation_imgs/set2.png)
 
 ![set3.png](Assignments/assignment1/equation_imgs/set3.png)
+
+## Assignment 2:
+
+Numerical integration using Composite Simpson 3/8 Rule
+
+## Assignment 3:
+
+Solving system of linear equations using Minimal residual method
