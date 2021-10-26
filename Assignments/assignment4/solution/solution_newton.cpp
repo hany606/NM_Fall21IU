@@ -1,13 +1,27 @@
-// It is working but has a bug in the results, I have not fixed yet
-
 // Newton's method
 // Source: 
 // https://personal.math.ubc.ca/~pwalls/math-python/roots-optimization/newton/
+// https://www.lakeheadu.ca/sites/default/files/uploads/77/docs/RemaniFinal.pdf
 
 // Gradient matrix (Jacobian)  J: 4xn -> s.t. n is the number of the satalities that we recieved their data
 // for n = 4 -> J: 4x4, we will just calculate the inverse
 // otherwise; n > 4 -> J: 4xn, we will calculate the pseudo inverse (J^T@J)^{-1}@J^T
 //      Thus, we will need inverse of (J^T@J)
+
+// Method:
+// F = [f_1; f_2; f_3; f_4; f_5, ...., f_n].T
+// \phi = \sum_{i=0}^{n} r_i(x,y,z,t)       (Lecture notations)
+// r_i(x,y,z,t) = f_i
+// f_i = (x-x_i)^2 + (y-y_i)^2 + (z-z_i)^2 - (t-t_i)^2 = 0 
+// Convert the problem to optimization min_{x,y,z,t} (\phi) -> this means we will satisfy the equations and get the values of x,y,z,t that will make the summation at least as possible (satisfy the equality)
+// Solve it using Gradient based optimization method for unconstrained optimization, we might add a constraint on time to be positive but we can change it back to unconstrained by adding this constraint as extra cost (Lagrange multiplier)
+// Moreover, we can solve using simple steepest gradient descent or Newton's method
+// 1. Get the jacobian matrix (1st order derivative) (nx4) such that the row: [\partial f_i / \partial x, \partial f_i / \partial y, \partial f_i / \partial z, \partial f_i / \partial t] \forall i \in {0..n}
+// 2. Get the inverse of the jacobian using pseudo inverse as it is not squared matrix
+// 3. Multiple the inverse of the jacobian with F   (Update step)
+// 4. Subtract the update step vector from the previous iteration result
+// And repeat these steps for each iteration till convergence with error margin for each new incoming data
+
 
 #include <stdio.h>
 #include <math.h>
@@ -15,9 +29,9 @@
 
 
 #define N 30
-#define alpha 0.025//0.5
+#define alpha 1//0.5
 
-static const double eps = 1e-6;
+static const double eps = 1e-7;
 
 double calc_error(double *xi, double *yi, double *zi, double *ti,
                   double x, double y, double z, double t,
@@ -247,7 +261,7 @@ void compute_grad(double *xi, double *yi, double *zi, double *ti,
         grad_matrix[i*n+0] = 2*(x-xi[i]);
         grad_matrix[i*n+1] = 2*(y-yi[i]);
         grad_matrix[i*n+2] = 2*(z-zi[i]);
-        grad_matrix[i*n+3] = 2*(t-ti[i]);
+        grad_matrix[i*n+3] = -2*(t-ti[i]);
     }
 }
 
@@ -275,7 +289,6 @@ int main() {
         const int n = gps_read(xi, yi, zi, ti);
         if (n < 4) break; // If gps_read returns any value less than four, it means that we have lost the signal, and the program should quit (return 0;).
         // if(n==0) break;
-        // TODO: find x, y, z, t
         double *t_matrix= (double *) malloc(M_*n*sizeof(double));  // To store the transpose
         double *pseudoinverse= (double *) malloc(M_*n*sizeof(double)); // To store the pseudoinverse
         double *grad_matrix = (double *) malloc(n*M_*sizeof(double));
@@ -292,15 +305,7 @@ int main() {
                 MatrixMult(inv,t_matrix,pseudoinverse, M_, M_, n);
                 compute_function(xi, yi, zi, ti, x,y,z,t, n, function_matrix);
                 tmpMatrixMult(pseudoinverse, function_matrix, update_matrix, M_, n);
-                // MatrixMult(pseudoinverse, function_matrix, update_matrix, M_, n, 1);
 
-                // printf("inverse :\n");
-                // displayM_N_(pseudoinverse, n);
-                // printf("function_matrix:\n");
-                // displayN_1_(function_matrix, n);
-
-                // printf("Update:\n");
-                // gps_submit(update_matrix[0], update_matrix[1], update_matrix[2], update_matrix[3]);
                 x = x - alpha*update_matrix[0];
                 y = y - alpha*update_matrix[1];
                 z = z - alpha*update_matrix[2];
@@ -308,9 +313,10 @@ int main() {
             }
 
             steps +=1;
-            if(steps > 5)
+            if(steps > 10)
                break;
         }
+        // printf("%d %.12f\n", steps, calc_error(xi, yi, zi, ti, x,y,z,t, n));
         free(t_matrix);
         free(pseudoinverse);
         free(grad_matrix);
