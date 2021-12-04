@@ -19,3 +19,8 @@ Numerical integration using Composite Simpson 3/8 Rule
 ## Assignment 3:
 
 Solving system of linear equations using Minimal residual method
+
+
+## Assignment 4:
+
+Solving system of non-linear equations using Newton's method
