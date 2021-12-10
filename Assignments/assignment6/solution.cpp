@@ -12,11 +12,10 @@
 // Thus, I chose to use eigen3 library to calculate the eigenvalues and eigenvectors
 #include <eigen3/Eigen/Eigenvalues>
 
-
-// TODO:
-// Check: https://www.arxiv-vanity.com/papers/1110.3397/
-// Check: https://www.codeproject.com/Articles/268589/odeint-v2-Solving-ordinary-differential-equations
-// Check: https://github.com/Thierry-Dumont/Odes-NG
+// Sources:
+// https://www.arxiv-vanity.com/papers/1110.3397/
+// https://www.codeproject.com/Articles/268589/odeint-v2-Solving-ordinary-differential-equations
+// https://github.com/Thierry-Dumont/Odes-NG
 // https://www.youtube.com/watch?v=KS_6mxdzQws
 // https://au.mathworks.com/help/matlab/math/solve-stiff-odes.html
 // https://www.wias-berlin.de/people/john/LEHRE/NUMERIK_II_20_21/ode_2.pdf
@@ -24,6 +23,7 @@
 
 #define eps 1e-6
 #define N 6
+//6
 
 using namespace std;
 
@@ -185,16 +185,60 @@ void initialize_u_vec(double *u, double *u_0){
 // k4*x,  2*k2*x,  0,  k1*y,  0,  0,
 
 void construct_A_mat(double *A, double *u, double *k){
+
+    // A[0] = -k[1]*u[1]+k[2]*u[3]-2*k[3]*u[0];
+    // A[1] = +k[0]*u[3];
+    // A[2] = 0;
+    // A[3] = 0;
+    // A[4] = 0;
+    // // A[5] = 0;
+
+
+    // // A[6] = -k[1]*u[1];
+    // A[5] = -k[1]*u[1];
+    // A[6] = -k[0]*u[3];
+    // A[7] = k[4]*u[4];
+    // A[8] = 0;
+    // A[9] = 0;
+    // // A[11] = 0;
+
+
+    // A[10] = 0;
+    // A[11] = 0;
+    // // A[14] = -k[4]*u[4];
+    // A[12] = 0;
+    // A[13] = 2*k[2]*u[0];
+    // // A[16] = 0;
+    // A[14] = -k[4]*u[2];
+    // // A[17] = 0;
+
+
+    // A[15] = k[3]*u[0];
+    // // A[18] = k[3]*u[0]-k[2]*u[3];
+    // A[16] = 0;
+    // A[17] = 0;
+    // // A[21] = -k[0]*u[1];
+    // A[18] = -k[0]*u[1]-k[2]*u[0];
+    // A[19] = 0;
+    // // A[23] = 0;
+
+
+    // A[20] = 0;
+    // A[21] = 0;
+    // A[22] = 0;
+    // A[23] = 0;
+    // A[24] = -k[4]*u[2];
+
     A[0] = -k[1]*u[1]+k[2]*u[3]-2*k[3]*u[0];
-    A[1] = k[0]*u[3];
+    A[1] = +k[0]*u[3];
     A[2] = 0;
     A[3] = 0;
     A[4] = 0;
     A[5] = 0;
 
 
-    A[6] = 0;
-    A[7] = -k[1]*u[0]-k[0]*u[3];
+    A[6] = -k[1]*u[1];
+    A[7] = -k[0]*u[3];
     A[8] = k[4]*u[4];
     A[9] = 0;
     A[10] = 0;
@@ -203,9 +247,11 @@ void construct_A_mat(double *A, double *u, double *k){
 
     A[12] = 0;
     A[13] = 0;
-    A[14] = -k[4]*u[4];
+    // A[14] = -k[4]*u[4];
+    A[14] = 0;
     A[15] = 2*k[2]*u[0];
-    A[16] = 0;
+    // A[16] = 0;
+    A[16] = -k[4]*u[2];
     A[17] = 0;
 
 
@@ -230,9 +276,9 @@ void construct_A_mat(double *A, double *u, double *k){
     A[30] = k[3]*u[0];
     A[31] = 2*k[1]*u[0];
     // A[31] = 2*k[1]*u[0]+k[0]*u[3];
-    // A[32] = 0;
+    A[32] = 0;
     A[33] = k[0]*u[1];
-    A[33] = 0;
+    // A[33] = 0;
     A[34] = 0;
     A[35] = 0;
 
@@ -255,7 +301,7 @@ void construct_eigenvalues(double *L, Eigen::EigenSolver<Eigen::Matrix<double, N
 void construct_eigenvectors(double *S, Eigen::EigenSolver<Eigen::Matrix<double, N,N> > s){
     for (int i=0; i<N; i++)
         for (int j=0; j<N; j++)
-            S[i * N + j] = s.eigenvectors()(i,j).real();
+            S[i * N + j] = s.eigenvectors()(j,i).real();
 }
 
 void construct_mat(double *A, Eigen::Matrix<double,N,N,Eigen::RowMajor> mat){
@@ -269,8 +315,10 @@ void mat_vec_mult(double *out, double *A, double *v){
     for (int i=0; i<N; i++){
         out[i] = 0.0;
         for (int j=0; j<N; j++){
+            // cout<<A[i*N+j]<<"*"<<v[j]<<"\t";
             out[i] += A[i*N+j] * v[j];
         }
+        // cout<<"\n";
     }
 }
 void mat_mat_mult(double *matrix_1, double *matrix_2, double *matrix_product) {
@@ -286,45 +334,210 @@ void mat_mat_mult(double *matrix_1, double *matrix_2, double *matrix_product) {
 
 
 
-void update(double *u, double *L, double *S, double *S_inv, double tau){
-    // u^{n+1} = S@e^{\tau\Lambda}@S^{-1}@u^n
-    // Formed to:
-    // v^n = S^{-1}u^n
-    double *v_vec= (double *) malloc(N*sizeof(double)); // To store 4xn @ nx4
-    mat_vec_mult(v_vec, S_inv, u);
+double update(double *u, double *L, double *S, double *S_inv, double tau, double *A, double *k){
+    // // u^{n+1} = S@e^{\tau\Lambda}@S^{-1}@u^n
+    // // Formed to:
+    // // v^n = S^{-1}u^n
+    // double *v_vec= (double *) malloc(N*sizeof(double)); // To store 4xn @ nx4
+    // mat_vec_mult(v_vec, S_inv, u);
 
-    Eigen::Map<Eigen::Matrix<double,N,N,Eigen::RowMajor> > tmp(L);
-    // tau = tmp.determinant();
-    // cout<<"Tau: "<< tau<<endl;
-    // v^{n+1}_i = e^{\tau\lambda_i)}v^n_i
-    for (int i=0; i<N; i++){
-        // cout<<v_vec[i]<<"\t";
-        v_vec[i] *= exp(tau*L[i*N+i]);
-        // cout<<v_vec[i]<<"\n";
+    // Eigen::Map<Eigen::Matrix<double,N,N,Eigen::RowMajor> > tmp(L);
+    // // tau1 is the small step for the stiff
+    // int m = 10;
+    // double tau1 = 0.0;
+    // for(int i=0; i<N; i++){
+    //     // Stiff
+    //     // if(L[i*N+i] < -1){
 
-    }
+    //     // }
+    //     // Soft
+    //     if(L[i*N+i] < 1 && L[i*N+i] > 0){
+    //         continue;
+    //     }
+    //     tau1 = max(tau1, abs(L[i*N+i]));
+    // }
+    // tau1 = 1/tau1; 
+    // double tau2 = tau1*m;
+    // // tau2 = tau;
+    // // tau1 = tau;
+    // // tau1
+    // // double tau
+    // // tau = tmp.determinant();
+    // // cout<<"Tau: "<< tau<<endl;
+    // // v^{n+1}_i = e^{\tau\lambda_i)}v^n_i
+    // // Splitting the system
+    // for (int i=0; i<N; i++){
+    //     if(L[i*N+i] < -1){
+    //         for(int j=0; j<m; j++){
+    //             v_vec[i] *= exp(tau1*L[i*N+i]);
+    //         }
 
-    //-------------------------------------------
-    // Debug:
-    // double *test= (double *) malloc(N*N*sizeof(double));
-    // set_zero(S_inv);
-    // S @ S^{-1} != zero_mat ??? Because it is an approximation for the inverse
-    // mat_mat_mult(S, S_inv, test);
-    // cout<<"^^^^^^^^^^^^^^^\n";
-    // display_mat(test);
-    // cout<<"^^^^^^^^^^^^^^^\n";
-    //-------------------------------------------
+    //     }
+    //     // Soft
+    //     // else if(L[i*N+i] < 1 && L[i*N+i] > 0){
+    //     else{
+    //         v_vec[i] *= exp(tau2*L[i*N+i]);
 
-    // And again go back from v to u
-    // u^{n+1} = Sv^{n+1}
-    mat_vec_mult(u, S, v_vec);
+    //     }
+    // }
+    // // for (int i=0; i<N; i++){
+    // //     // cout<<v_vec[i]<<"\t";
+    // //     v_vec[i] *= exp(tau*L[i*N+i]);
+    // //     // cout<<v_vec[i]<<"\n";
+    // // }
+    // // And again go back from v to u
+    // // u^{n+1} = Sv^{n+1}
+    // mat_vec_mult(u, S, v_vec);
+    // free(v_vec);
 
-    // Put v in u and return it
-    // double *eye= (double *) malloc(N*N*sizeof(double)); // To store 4xn @ nx4
+    // ------------------------------------------------
+    // Euler integration with splitting taus
+    // double *v= (double *) malloc(N*sizeof(double));
+    // double *eye= (double *) malloc(N*N*sizeof(double));
     // set_eye(eye);
-    // mat_vec_mult(u, eye, v_vec);
+    // mat_vec_mult(v, eye, u);
+    // int m = 10;
+    // double tau1 = 0.0;
+    // for(int i=0; i<N; i++){
+    //     // Stiff
+    //     // if(L[i*N+i] < -1){
 
-    free(v_vec);
+    //     // }
+    //     // Soft
+    //     if(L[i*N+i] < 1 && L[i*N+i] > 0){
+    //         continue;
+    //     }
+    //     tau1 = min(tau1, abs(L[i*N+i]));
+    // }
+
+    // tau1 = tau;//1/tau1; 
+    // double tau2 = tau1*m;
+    // double *A_mat= (double *) malloc(N*N*sizeof(double));
+    // set_zero(A_mat);
+
+    // for(int i = 0; i < N; i++){
+
+    //     if(L[i*N+i] < -1){
+    //         for(int z=0; z<m; z++){
+    //             double diff = 0.0;
+    //             for(int j = 0; j < N; j++){
+    //                 // implicit
+    //                 // diff +=  A[i*N+j]*u[j];
+    //                 // explicit
+    //                 diff +=  A_mat[i*N+j]*v[j];
+    //             }
+    //             u[i] +=  diff*tau1;
+    //             construct_A_mat(A_mat, u, k);
+    //         }
+    //     }
+    //     // Soft
+    //     // else if(L[i*N+i] < 1 && L[i*N+i] > 0){
+    //     else{
+    //         double diff = 0.0;
+    //         for(int j = 0; j < N; j++){
+    //             // implicit
+    //             // diff +=  A[i*N+j]*u[j];
+    //             // explicit
+    //             diff +=  A[i*N+j]*v[j];
+    //         }
+    //         u[i] +=  diff*tau2;
+    //     }
+
+
+    //     // u[i] = abs(u[i]);
+    // }
+    // free(A_mat);
+    // return tau2;
+
+    // ------------------------------------------------
+    // euler integration
+    double *v= (double *) malloc(N*sizeof(double));
+    double *eye= (double *) malloc(N*N*sizeof(double));
+    set_eye(eye);
+    mat_vec_mult(v, eye, u);
+
+    for(int i = 0; i < N; i++){
+        double diff = 0.0;
+        for(int j = 0; j < N; j++){
+            // implicit
+            // diff +=  A[i*N+j]*u[j];
+            // explicit
+            diff +=  A[i*N+j]*v[j];
+        }
+
+        u[i] +=  diff*tau;
+        // u[i] = abs(u[i]);
+    }
+    return tau;
+    // ------------------------------------------------
+    // RK-4th integration
+    // double *v= (double *) malloc(N*sizeof(double));
+    // double *eye= (double *) malloc(N*N*sizeof(double));
+    // set_eye(eye);
+    // mat_vec_mult(v, eye, u);
+    // double *A_mat= (double *) malloc(N*N*sizeof(double));
+    // double *new_u= (double *) malloc(N*sizeof(double));
+
+    // for(int i = 0; i < N; i++){
+    //     // Compute k1
+    //     double diff = 0.0;
+    //     for(int j = 0; j < N; j++){
+    //         // implicit
+    //         // diff +=  A[i*N+j]*u[j];
+    //         // explicit
+    //         diff +=  A[i*N+j]*v[j];
+    //     }
+
+    //     double k1 = diff*tau;
+    //     // Compute k2
+    //     diff = 0.0;
+    //     set_zero(A_mat);
+    //     mat_vec_mult(new_u, eye, u);
+    //     new_u[i] += k1/2.0;
+    //     construct_A_mat(A_mat, new_u, k);
+    //     for(int j = 0; j < N; j++){
+    //         // implicit
+    //         // diff +=  A[i*N+j]*u[j];
+    //         // explicit
+    //         diff +=  A[i*N+j]*v[j];
+    //     }
+    //     double k2 = diff*tau;
+
+    //     // Compute k3
+    //     diff = 0.0;
+    //     set_zero(A_mat);
+    //     mat_vec_mult(new_u, eye, u);
+    //     new_u[i] += k2/2.0;
+    //     construct_A_mat(A_mat, new_u, k);
+    //     for(int j = 0; j < N; j++){
+    //         // implicit
+    //         // diff +=  A[i*N+j]*u[j];
+    //         // explicit
+    //         diff +=  A[i*N+j]*v[j];
+    //     }
+    //     double k3 = diff*tau;
+    //     // Compute k4
+    //     diff = 0.0;
+    //     set_zero(A_mat);
+    //     mat_vec_mult(new_u, eye, u);
+    //     new_u[i] += k3;
+    //     construct_A_mat(A_mat, new_u, k);
+    //     for(int j = 0; j < N; j++){
+    //         // implicit
+    //         // diff +=  A[i*N+j]*u[j];
+    //         // explicit
+    //         diff +=  A[i*N+j]*v[j];
+    //     }
+    //     double k4 = diff*tau;
+
+    //     double k_coeff = (k1+2*k2+2*k3+k4)/6.0;
+
+    //     u[i] +=  abs(k_coeff);
+    //     // u[i] = abs(u[i]);
+    // }
+    // free(A_mat);
+
+    // return tau;
 }
 
 
@@ -385,7 +598,10 @@ int main() {
 
     initialize_u_vec(u_vec, initial_concentration);
     cout<<"------------------\n";
-    for(int i = 0; i < T; i++){
+    double total_time = 0;
+    int num_iter = 0;
+    // for(int i = 0; i < T; i++){
+    while(abs(total_time - T) > 1e-6){
         // if(i > 0){    
         //     // And again go back from v to u
         //     // u^{n+1} = Sv^{n+1}
@@ -422,7 +638,9 @@ int main() {
         // display_mat(eigenvectors);
 
         Eigen::Map<Eigen::Matrix<double,N,N,Eigen::RowMajor> > inv_mat(eigenvectors);
-        inv_mat = inv_mat.inverse().eval();
+        inv_mat = inv_mat.completeOrthogonalDecomposition().pseudoInverse();
+
+        // inv_mat = inv_mat.inverse().eval();
         // std::cout << "inv:" << std::endl;
         // std::cout << inv_mat << std::endl;
 
@@ -435,15 +653,19 @@ int main() {
 
         // display_mat(inv_eigenvectors);
         // Compute tau (step)
-        double tau = 0.00001;//1/abs(s.eigenvalues()(0).real()); //0.00001;
+        double tau = 0.001;//1.0/T;//1.0/double(T);//0.00001;//1/abs(s.eigenvalues()(0).real()); //0.00001;
         // Update step
-        // Get v_vec inside u_vec
-        update(u_vec, eigenvalues, eigenvectors, inv_eigenvectors, tau);
-    
-        display_vec(u_vec);
-        // break;
-
+        tau = update(u_vec, eigenvalues, eigenvectors, inv_eigenvectors, tau, A_mat, rate_const);
+        // cout<<"Tau: "<< tau<<endl;
+        // display_vec(u_vec);
+        total_time += tau;
+        num_iter++;
+        // cout<<"Total time: "<<total_time<<endl;
+        // if(num_iter > 3)
+        //     break;
     }
+    display_vec(u_vec);
+    cout<<"Total time: "<<total_time<<endl;
 
     // system of equations
     // u vector
