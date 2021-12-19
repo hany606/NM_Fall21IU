@@ -1,3 +1,9 @@
+# Microscopic model of traffic flow
+# Sources:
+# - https://gafferongames.com/post/integration_basics/
+# - https://towardsdatascience.com/simulating-traffic-flow-in-python-ee1eab4dd20f
+# Run it: python3 main.py
+
 # TODO: take into consideration the possibility of having only 1 vehicle
 from math import sqrt
 from time import sleep
@@ -14,19 +20,57 @@ class Vehicle:
         self.p = Physics(x0, v0, a0)
         self.id = id
 
-    def update(self, pm, pm1, c, dt, len_traffic):
-        dv = pm1.v - pm.v
+    def _compute_c_coeff(self, pm, pm1):
+        xm, xm1 = pm.x, pm1.x
+        dxm = xm1 - xm
+        c = 0.0
+        if(dxm >= 45):  # Free-flow
+            c = 1075/dxm
+        elif(dxm >= 25):   # Synchronized-flow
+            c = 0.6*dxm + 362/dxm
+        elif(dxm >= 7):
+            c = 0.6*dxm
+        return c
+
+    def _compute_dx(self, pm, pm1, len_traffic, track_length):
+        # compute the delta x (difference between the cars)
         dx = pm1.x - pm.x
-        # Semi-implicit Euler integration: https://www.wikiwand.com/en/Semi-implicit_Euler_method
-        if(len_traffic > 1):
-            self.p.a = c*dv/dx
-            if(dx < 7): # ∀𝑚 Δ𝑥𝑚(𝑡) < 7 [м], then 𝑣𝑚(𝑡) = 0.
-                self.p.v = 0.0
-            else:
-                self.p.v = self.p.v + self.p.a*dt
-        # TODO: Take into consideration the track length with the x-distance
-        self.p.x = self.p.x + self.p.v*dt
+        # if it is single vehicles in the track
+        # Or if the delta x is negative, in the case of the leader car in the starting of the road and the follower at the end
+        #   Thus, we add the track_length to the delta x as it is ring road
+        #   Kinda the same as taking the small angle instead of the big angle between two lines
+        #   Example: dx should be 30 in case of (track_length=900): 10, 880 (dx=-870) -> 10+900, 880 (dx=30)
+        if(dx < 0 or len_traffic == 1):
+            dx += track_length
+        return dx
     
+    def update(self, pm, pm1, dt, len_traffic, eps, track_length):
+        dv = pm1.v - pm.v
+        dx = self._compute_dx(pm, pm1, len_traffic, track_length)
+        old_x = self.p.x
+        c = self._compute_c_coeff(pm, pm1)
+        self.p.a = c*dv/dx
+
+        # Semi-implicit Euler integration: https://www.wikiwand.com/en/Semi-implicit_Euler_method
+        # "Since this is only an approximation, the speed can become negative at times (but the model does not allow for that). An instability arises when the speed is negative, and the position and speed diverge into negative infinity"
+        # Source: https://towardsdatascience.com/simulating-traffic-flow-in-python-ee1eab4dd20f
+        # "To overcome this problem, whenever we predict a negative speed we will set it equal to zero and work out way from there:"
+        if(self.p.v + self.p.a*dt < 0):
+            self.p.x -= 0.5*self.p.v*self.p.v/self.p.a
+            self.p.v = 0.0
+        else:
+            self.p.v += self.p.a*dt
+            self.p.x += self.p.v*dt + self.p.a*dt*dt/2
+
+
+        # If the new position is nearly equal
+        if(self.p.x - (dx+old_x) < eps and dx+old_x < self.p.x):
+            self.p.x = (dx+old_x)
+        
+        # Ring round track -> limit the position
+        if(self.p.x >= track_length):
+            self.p.x = self.p.x - self.p.x // track_length * track_length
+
     def get_attributes(self):
         return self.p, self.id
 
@@ -54,18 +98,6 @@ class Traffic:
         self.entrypoint = 0.0
         self.last_time_add = 0.0
         self.num_steps = 0
-        
-    def _compute_c_coeff(self, pm, pm1):
-        xm, xm1 = pm.x, pm1.x
-        dxm = xm1 - xm
-        c = 0.0
-        if(dxm >= 45):  # Free-flow
-            c = 1075/dxm
-        elif(25 <= dxm < 45):   # Synchronized-flow
-            c = 0.6*dxm + 362/dxm
-        elif(7 <= dxm < 25):
-            c = 0.6*dxm
-        self.c = c
 
     def _compute_termination(self):
         done = True
@@ -77,24 +109,40 @@ class Traffic:
     # Get attributes of m and m1 vechiles
     def get_mm1(self, m):
         l = len(self.vehicles)
-        # m, m1 = self.vehicles[m%l], self.vehicles[(m+1)%l]
-        m, m1 = self.vehicles[m], self.vehicles[m-1]    # As the zeroth index is the leading car and the car with bigger index is the follower
+        m, m1 = self.vehicles[m%l], self.vehicles[(m+1)%l]
+        # m, m1 = self.vehicles[m], self.vehicles[m-1]    # As the zeroth index is the leading car and the car with bigger index is the follower
         pm, pm1 = m.get_attributes()[0], m1.get_attributes()[0]
         return pm, pm1
 
     def _compute_dt(self):
-        if(len(self.vehicles) > 1):
-            dt = 99e99
-            a_max = -99e99
-            for i in range(len(self.vehicles)):
-                a_max = max(a_max, self.vehicles[i].p.a)
-            for i in range(len(self.vehicles)):
-                pm, pm1 = self.get_mm1(i)
-                vm = pm.v
-                dxm = pm1.x - pm.x
-                val = (-vm + sqrt(vm*vm+4*dxm*a_max))/(2*a_max)
-                dt = min(dt, val)
-            self.dt = dt
+        dt = 99e99
+        a_max = -99e99
+        for i in range(len(self.vehicles)):
+            a_max = max(a_max, self.vehicles[i].p.a)
+        for i in range(len(self.vehicles)):
+            pm, pm1 = self.get_mm1(i)
+            vm = pm.v
+            dxm = pm1.x - pm.x
+            if(vm > 0):
+                d = dxm / vm
+                if(a_max > 0):
+                    val = (-vm + sqrt(vm*vm+4*dxm*a_max))/(2*a_max)
+                    dt = min(dt, val)
+                else:
+                    dt = min(d,dt)
+        return dt        
+        # if(len(self.vehicles) > 1):
+        #     dt = 99e99
+        #     a_max = -99e99
+        #     for i in range(len(self.vehicles)):
+        #         a_max = max(a_max, self.vehicles[i].p.a)
+        #     for i in range(len(self.vehicles)):
+        #         pm, pm1 = self.get_mm1(i)
+        #         vm = pm.v
+        #         dxm = pm1.x - pm.x
+        #         val = (-vm + sqrt(vm*vm+4*dxm*a_max))/(2*a_max)
+        #         dt = min(dt, val)
+        #     self.dt = dt
 
     def _compute_entrypoint(self):
         p1 = self.vehicles[-1]
@@ -110,15 +158,17 @@ class Traffic:
         if(self.last_time_add > self.tau):
             self.id -= 1
             v = Vehicle(x0=self.entrypoint, v0=self.initial_velocity, a0=self.initial_acceleration, id=self.id)
-            self.vehicles.append(v)
+            # self.vehicles.append(v)
+            # Add vehicle to the begining of the list in order to have the correc indexing
+            # indexing [0,1,2,3] where 3 is the oldest vehicles
+            self.vehicles.insert(0, v)
             self.last_time_add = 0.0
 
     def _update_vehicles(self):
         for i in range(len(self.vehicles)):
             pm, pm1 = self.get_mm1(i)
-            self._compute_c_coeff(pm, pm1)
             dt = self.dt
-            self.vehicles[i].update(pm, pm1, self.c, dt, len(self.vehicles))
+            self.vehicles[i].update(pm, pm1, dt, len(self.vehicles), self.epsilon, self.track_length)
 
     def _print_report(self, sleep_time=0.1):
         print(f"dt: {self.dt}\ttimesteps: {self.timesteps}\tNum. Steps: {self.num_steps}")
@@ -126,15 +176,14 @@ class Traffic:
         sleep(sleep_time)
 
     def update(self):
-        self._compute_dt()
-        self.timesteps += self.dt
-        self.num_steps += 1
-        self.last_time_add += self.dt
+        self.dt = self._compute_dt()
         self._update_vehicles()
         self._add_vehicle()
         done = self._compute_termination()
         self._print_report()
-
+        self.timesteps += self.dt
+        self.num_steps += 1
+        self.last_time_add += self.dt
 
         return done, self.timesteps, self.vehicles
 
