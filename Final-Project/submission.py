@@ -219,11 +219,8 @@ class Traffic:
         # self._print_report()
         return done, self.timesteps, self.vehicles
 
-def print_report(data, cli_flag=True, file="output.txt"):
-    timesteps, vehicles, correct_timesteps, correct_num_vehicles = data
-    error = abs(timesteps - correct_timesteps) / max(1, abs(timesteps))
-    if(cli_flag):
-        print(f"Timesteps: {timesteps}/{correct_timesteps},\tError: {error}\nNum. vehicles: {len(vehicles)}/{int(correct_num_vehicles)}")
+def print_report(data, file="output.txt"):
+    timesteps = data
     with open(file, 'w+') as f:
         f.write(str(timesteps))
 
@@ -247,5 +244,4 @@ if __name__ == '__main__':
     while not done:
         done, timesteps, vehicles = traffic.update()
         steps += 1
-    correct_timesteps, num_vehicles = parse_file(file="correct.txt")
-    print_report([timesteps, vehicles, correct_timesteps, num_vehicles,])
+    print_report(timesteps)
