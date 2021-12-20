@@ -2,12 +2,11 @@
 # Sources:
 # - https://gafferongames.com/post/integration_basics/
 # - https://towardsdatascience.com/simulating-traffic-flow-in-python-ee1eab4dd20f
-# Run it: python3 main.py
+# Run it: python3 submission.py
 
 from abc import abstractmethod
 from math import sqrt, isclose
 from time import sleep, time
-import numpy as np
 
 class Physics:
     def __init__(self, x0=0.0, v0=0.0, a0=0.0):
