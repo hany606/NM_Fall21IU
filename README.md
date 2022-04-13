@@ -25,6 +25,13 @@ Solving system of linear equations using Minimal residual method
 
 Solving system of non-linear equations using Newton's method
 
+## Assignment 5:
+
+Regression task
+
+## Assignment 6:
+
+Stiff ODE solver 
 
 ## Final Project:
 
