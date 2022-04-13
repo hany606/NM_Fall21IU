@@ -24,3 +24,8 @@ Solving system of linear equations using Minimal residual method
 ## Assignment 4:
 
 Solving system of non-linear equations using Newton's method
+
+
+## Final Project:
+
+Microscopic model of traffic flow based on the given models, parameters and constraints
